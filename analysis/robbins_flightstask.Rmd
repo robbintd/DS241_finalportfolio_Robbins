@@ -1,0 +1,84 @@
+---
+title: "Experiment 1: Airline Data Analysis"
+Date: "2023-09-06"
+output: html_notebook
+---
+
+Further analysis of airline data using slightly more complex visualizations from earlier in the semester:
+
+```{r}
+
+library(tidyverse)
+library(janitor)
+library(here)
+library(nycflights13)
+
+# Loading raw (tidied) data
+df1 = nycflights13::flights
+glimpse(df1)
+
+  
+```
+
+Task 1:
+```{r}
+
+df2 = df1 |> filter(month == 9, origin == "MIA")
+glimpse(df2)
+
+```
+
+Task 2:
+```{r}
+df3 = df1 |> filter(month == 9, dest == "MIA")
+glimpse(df3)
+  
+```
+
+Task 3:
+```{r}
+df4 = df1 |> filter(month == 1, dest == "MIA")
+glimpse(df4)
+```
+
+Task 4:
+```{r}
+df5 = df1 |> filter(4 < month, month < 9, dest == "MIA")
+glimpse(df5)
+```
+
+Task 5: Finding unique flight numbers (dest = miami, month = september)
+```{r}
+# Uses df3 from previous code blocks, which includes all flights to Miami in September
+
+uniques = unique(df3$flight)
+
+# Uniques now represents all the unique flight numbers landing in Miami in September
+# Now, finding the minimum flight number  = 'min'
+
+min = min(uniques)
+view(min)
+# min = 83
+# Creating df6 = all flights to miami with this min value
+miami = df1 |> filter(dest == "MIA")
+df6 = miami |> filter(flight == "83")
+
+```
+
+Task 6: Visualizing flight delays for flight #83
+```{r}
+delays1 = ggplot(data = df6, mapping = aes(dep_delay, arr_delay)) + geom_point(mapping = aes(color = month)) + geom_smooth(method = "lm")
+
+delays1
+
+#from the 'delays1' figure, one can approximate a position linear correlation between departure and arrival delays. This is to be expected.
+
+#additionally, it appears that more serious delays occur in summer months than winter months, as most lighter-colored points have smaller delays.
+
+#Yes, it is made clear in the data that a negative delay means an early departure/arrival (no secondary source is needed. This is shown because the scheduled arrival time and actual arrival time are included (same for departures), so one can compare them directly and calculate the true delays. Delays are negative when early, positive when truly delayed.
+
+#Creating another visualization:
+delays2 = ggplot(data = df6)
+
+```
+
