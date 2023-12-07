@@ -1,0 +1,53 @@
+---
+title: "Experiment 1: Airline Data Analysis"
+Date: "2023-09-06"
+output: html_notebook
+---
+
+First in-class DS241 project; loosely adopted from 'R for Data Science' textbook.
+
+This file has minimal commenting throughout, as it was a preset assortment of tasks to practice basic dplyr verbs and R concepts.
+
+```{r}
+
+library(tidyverse)
+library(janitor)
+library(here)
+library(nycflights13)
+
+# Loading raw (tidied) data
+df1 = nycflights13::flights
+glimpse(df1)
+
+  
+```
+
+Task 1:
+```{r}
+df2 = df1 |> filter(month == 9, origin == "MIA")
+glimpse(df2)
+
+```
+
+Task 2:
+```{r}
+df3 = df1 |> filter(month == 9, dest == "MIA")
+glimpse(df3)
+  
+```
+
+Task 3:
+```{r}
+df4 = df1 |> filter(month == 1, dest == "MIA")
+glimpse(df4)
+
+```
+
+Task 4:
+```{r}
+df5 = df1 |> filter(5 < month, month < 10, dest == "MIA")
+glimpse(df5)
+```
+
+
+```{r}
