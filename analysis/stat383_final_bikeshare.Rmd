@@ -1,0 +1,288 @@
+---
+title: 'STAT383 Final Project: Bikeshare'
+output:
+  html_document:
+    df_print: paged
+---
+
+Toward the end of the semester, I used my DS241 skillset to do further analysis of bikeshare, this time for my final STAT383 project doing regression analysis to understand optimal bikeshare conditions in Seoul, South Korea.
+
+The following code was all written by myself, and I feel it exemplifies my capacity to put together organized code, analyze and clean data, use various key functions in R, and produce effective visualizations.
+
+Referencing key packages:
+```{r}
+
+library(tidyverse)
+library(janitor)
+library(here)
+library(rwunderground)
+library(openmeteo)
+library(ggplot2)
+library(geosphere)
+
+```
+
+Loading raw Seoul bikeshare date (hourly):
+```{r}
+
+thisfile=here("data_raw", "SeoulBikeData.csv")
+
+bikes_raw = read_csv(thisfile) %>% clean_names()
+
+```
+
+Removing outlier days (holidays and nonfunctioning), removing variables not relevant to regression, and combining precipitation variables by equivalent rain height (NSSL 1mm rain = 13mm snow) (eql_rain_mm):
+```{r}
+
+bikes_filter = bikes_raw |> 
+  filter(holiday == "No Holiday", functioning_day == "Yes") |> 
+  select(-date, -dew_point_temperature, -solar_radiation_mj_m2, -seasons, -holiday, -functioning_day)
+
+bikes_total = bikes_filter |> 
+  mutate(eql_rain_mm = rainfall_mm + snowfall_cm/10/13) |> 
+  select(-rainfall_mm, -snowfall_cm)
+
+glimpse(bikes_total)
+
+```
+
+Building linear regression model for ridership as a function of the following variables- hour, temperature, humidity, windspeed, visibility, and precipitation:
+```{r}
+
+regression_total = lm(data = bikes_total, rented_bike_count ~ hour + temperature_c + humidity_percent + wind_speed_m_s + visibility_10m + eql_rain_mm)
+
+summary(regression_total) 
+
+# This builds a regression model to predict total hourly ridership as with all variables as inputs, as opposed to drawing intependent trends for each variable.
+
+```
+
+Independent regression model for ridership vs hour of day--
+
+Key output values: 
+ - Coefficient/slope: 40.1596
+ - Intercept: 277.1531
+ - Std Error of Slope: 0.9353
+ - t Value: 42.94
+ - Adj R Squared: 0.1862
+ - p Value (F statistic): < 2.2e-16
+ - Res Std Err: 581 on 8055 deg of freedom
+ 
+```{r}
+
+reg_hour = lm(data = bikes_total, rented_bike_count ~ hour)
+summary(reg_hour) 
+
+hour_plot = ggplot(data = bikes_total,
+                   aes(x = hour, y = rented_bike_count)) +
+            geom_point(alpha = 0.1, color = "darkgrey") +
+            geom_smooth(aes(color = "Smooth Average Correlation Curve"), linewidth = 1.5) +
+            geom_abline(aes(intercept = 277.1531,
+                        slope = 40.1596, color = "Linear Regression Model Output"),
+                        linetype = "dashed",linewidth=1.5) +
+            theme_minimal() +
+            labs(x = "Hour of Day",
+                 y = "Hourly Total Count of Rented Bikes",
+                 title = "Ridership vs Hour of Day") +
+  ylim(0,3000) +
+  scale_color_manual(values = c("Smooth Average Correlation Curve" = "green",
+                                "Linear Regression Model Output" = "red" )) +
+  guides(color = guide_legend(title = "Linear Annotations")) +
+  theme(legend.position = "bottom", legend.text = element_text(size = 8))
+                   
+hour_plot
+
+```
+
+Independent regression model for ridership vs temperature--
+
+Key output values: 
+ - Coefficient/slope: 29.4352
+ - Intercept: 358.7187
+ - Std Error of Slope: 0.4927
+ - t Value: 59.74
+ - Adj R Squared: 0.307
+ - p Value (F statistic): < 2.2e-16
+ - Res Std Err: 536.1 on 8055 deg of freedom
+ 
+```{r}
+
+reg_temp = lm(data = bikes_total, rented_bike_count ~ temperature_c)
+summary(reg_temp) 
+
+temp_plot = ggplot(data = bikes_total,
+                   aes(x = temperature_c, y = rented_bike_count)) +
+            geom_point(alpha = 0.1, color = "darkgrey") +
+            geom_smooth(aes(color = "Smooth Average Correlation Curve"), linewidth = 1.5) +
+            geom_abline(aes(intercept = 358.7187,
+                        slope = 29.435, color = "Linear Regression Model Output"),
+                        linetype = "dashed",linewidth=1.5) +
+            theme_minimal() +
+            labs(x = "Hourly Temperature (Deg C)",
+                 y = "Hourly Total Count of Rented Bikes",
+                 title = "Ridership vs Temperature") +
+  ylim(0,3000) +
+  scale_color_manual(values = c("Smooth Average Correlation Curve" = "green",
+                                "Linear Regression Model Output" = "red" )) +
+  guides(color = guide_legend(title = "Linear Annotations")) +
+  theme(legend.position = "bottom", legend.text = element_text(size = 8))
+                   
+temp_plot
+
+```
+
+Independent regression model for ridership vs humidity--
+
+Key output values: 
+ - Coefficient/slope: -6.7230
+ - Intercept: 1131.6885
+ - Std Error of Slope: 0.3435
+ - t Value: -19.57
+ - Adj R Squared: 0.04527
+ - p Value (F statistic): < 2.2e-16
+ - Res Std Err: 629.3 on 8055 deg of freedom
+ 
+```{r}
+
+reg_hum = lm(data = bikes_total, rented_bike_count ~ humidity_percent)
+summary(reg_hum) 
+
+hum_plot = ggplot(data = bikes_total,
+                   aes(x = humidity_percent, y = rented_bike_count)) +
+            geom_point(alpha = 0.1, color = "darkgrey") +
+            geom_smooth(aes(color = "Smooth Average Correlation Curve"), linewidth = 1.5) +
+            geom_abline(aes(intercept = 1131.6885,
+                        slope = -6.7230, color = "Linear Regression Model Output"),
+                        linetype = "dashed",linewidth=1.5) +
+            theme_minimal() +
+            labs(x = "Hourly Percent Humidity",
+                 y = "Hourly Total Count of Rented Bikes",
+                 title = "Ridership vs Humidity") +
+  ylim(0,3000) +
+  scale_color_manual(values = c("Smooth Average Correlation Curve" = "green",
+                                "Linear Regression Model Output" = "red" )) +
+  guides(color = guide_legend(title = "Linear Annotations")) +
+  theme(legend.position = "bottom", legend.text = element_text(size = 8))
+                   
+hum_plot
+
+```
+
+Independent regression model for ridership vs windspeed-- 
+
+Key output values: 
+ - Coefficient/slope: 85.106
+ - Intercept: 593.025
+ - Std Error of Slope: 6.926
+ - t Value: 12.29
+ - Adj R Squared: 0.01828
+ - p Value (F statistic): < 2.2e-16
+ - Res Std Err: 638.1 on 8055 deg of freedom
+ 
+```{r}
+
+reg_wind = lm(data = bikes_total, rented_bike_count ~ wind_speed_m_s)
+summary(reg_wind) 
+
+wind_plot = ggplot(data = bikes_total,
+                   aes(x = wind_speed_m_s, y = rented_bike_count)) +
+            geom_point(alpha = 0.1, color = "darkgrey") +
+            geom_smooth(aes(color = "Smooth Average Correlation Curve"), linewidth = 1.5) +
+            geom_abline(aes(intercept = 593.025,
+                        slope = 85.106, color = "Linear Regression Model Output"),
+                        linetype = "dashed",linewidth=1.5) +
+            theme_minimal() +
+            labs(x = "Hourly Wind Speed (m/s)",
+                 y = "Hourly Total Count of Rented Bikes",
+                 title = "Ridership vs Wind Speed") +
+  xlim(0,5) +
+  ylim(0,3000) +
+  scale_color_manual(values = c("Smooth Average Correlation Curve" = "green",
+                                "Linear Regression Model Output" = "red" )) +
+  guides(color = guide_legend(title = "Linear Annotations")) +
+  theme(legend.position = "bottom", legend.text = element_text(size = 8))
+                   
+wind_plot
+
+```
+
+Independent regression model for ridership vs visibility-- 
+
+Key output values: 
+ - Coefficient/slope: 2.352e-02
+ - Intercept: 4.028e+02
+ - Std Error of Slope: 1.153e-03
+ - t Value: 20.41
+ - Adj R Squared: 0.04904
+ - p Value (F statistic): < 2.2e-16
+ - Res Std Err: 628 on 8055 deg of freedom
+ 
+```{r}
+bikes_total_2 = bikes_total |> 
+  mutate(visibility_m = visibility_10m * 10) |> 
+  select(-visibility_10m)
+
+reg_vis = lm(data = bikes_total_2, rented_bike_count ~ visibility_m)
+summary(reg_vis) 
+
+vis_plot = ggplot(data = bikes_total_2,
+                   aes(x = visibility_m, y = rented_bike_count)) +
+            geom_point(alpha = 0.1, color = "darkgrey") +
+            geom_smooth(aes(color = "Smooth Average Correlation Curve"), linewidth = 1.5) +
+            geom_abline(aes(intercept = 4.028e+02,
+                        slope = 2.352e-02, color = "Linear Regression Model Output"),
+                        linetype = "dashed",linewidth=1.5) +
+            theme_minimal() +
+            labs(x = "Visibility (meters)",
+                 y = "Hourly Total Count of Rented Bikes",
+                 title = "Ridership vs Visibility") +
+  ylim(0,3000) +
+  scale_color_manual(values = c("Smooth Average Correlation Curve" = "green",
+                                "Linear Regression Model Output" = "red" )) +
+  guides(color = guide_legend(title = "Linear Annotations")) +
+  theme(legend.position = "bottom", legend.text = element_text(size = 8))
+                   
+vis_plot
+
+```
+
+Independent regression model for ridership vs precipitation--
+
+Key output values: 
+ - Coefficient/slope: -73.849
+ - Intercept: 750.591
+ - Std Error of Slope: 6.213
+ - t Value: -11.89
+ - Adj R Squared: 0.01711
+ - p Value (F statistic): < 2.2e-16
+ - Res Std Err: 638.5 on 8055 deg of freedom
+ 
+```{r}
+
+reg_prec = lm(data = bikes_total, rented_bike_count ~ eql_rain_mm)
+summary(reg_prec) 
+
+prec_plot = ggplot(data = bikes_total,
+                   aes(x = eql_rain_mm, y = rented_bike_count)) +
+            geom_point(alpha = 0.1, color = "darkgrey") +
+            geom_smooth(aes(color = "Smooth Average Correlation Curve"), linewidth = 1.5) +
+            geom_abline(aes(intercept = 750.591,
+                        slope = -73.849, color = "Linear Regression Model Output"),
+                        linetype = "dashed",linewidth=1.5) +
+            theme_minimal() +
+            labs(x = "Precipitation (mm equivalent rainfall)",
+                 y = "Hourly Total Count of Rented Bikes",
+                 title = "Ridership vs Precipitation") +
+  xlim(0,5) +
+  ylim(0,3000) +
+  scale_color_manual(values = c("Smooth Average Correlation Curve" = "green",
+                                "Linear Regression Model Output" = "red" )) +
+  guides(color = guide_legend(title = "Linear Annotations")) +
+  theme(legend.position = "bottom", legend.text = element_text(size = 8))
+                   
+prec_plot
+
+```
+
+
+
